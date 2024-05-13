@@ -1,2 +1,2 @@
-rootProject.name = "ezviz-enable-rtsp-java"
+rootProject.name = "ezviz-enable-rtsp"
 
