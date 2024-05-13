@@ -26,7 +26,7 @@ jib {
         }
     }
     to {
-        image = "ezviz-enable-rtsp"
+        image = "ylemoigne/ezviz-enable-rtsp"
     }
     container {
         jvmFlags = listOf("-Dfile.encoding=UTF8", "-Djna.library.path=/app/lib")
