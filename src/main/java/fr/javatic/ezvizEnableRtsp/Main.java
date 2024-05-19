@@ -34,6 +34,7 @@ public class Main {
                         enableRtsp(hikvision, config);
                     }
                 }, config.intervalInSeconds(), TimeUnit.SECONDS);
+                Thread.currentThread().join();
             }
         } catch (Exception e) {
             System.out.println("Unexpected failure, exit");
