@@ -1,9 +1,18 @@
 package fr.javatic.ezvizEnableRtsp;
 
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.Hikvision;
+import fr.javatic.ezvizEnableRtsp.hikvisionSdk.HikvisionCallFailure;
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.ServiceSwitchConfig;
 
+import java.io.IOException;
+import java.net.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class Main {
+    private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+
     public static void main(String[] args) {
         Config config;
         try {
@@ -16,14 +25,46 @@ public class Main {
         }
 
         try (var hikvision = new Hikvision()) {
-            hikvision.login(config.host(), config.port(), config.username(), config.password());
-            System.out.println(hikvision.setServiceSwitch(new ServiceSwitchConfig(1, 1, 1,1)));
+            if(config.intervalInSeconds()==null){
+                enableRtsp(hikvision, config);
+                executorService.close();
+            }else{
+                executorService.schedule(()->{
+                    if (!rtspPortIsAvailable(config.host())) {
+                        enableRtsp(hikvision, config);
+                    }
+                }, config.intervalInSeconds(), TimeUnit.SECONDS);
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Unexpected failure, exit");
+            e.printStackTrace(System.err);
+            System.exit(1);
+        }
+    }
+
+    private static void enableRtsp(Hikvision hikvision, Config config) {
+        try {
+            hikvision.login(config.host(), config.port(), config.username(), config.password());
+            System.out.println(hikvision.setServiceSwitch(new ServiceSwitchConfig(1, 1, 1, 1)));
+        } catch (HikvisionCallFailure e) {
+            System.err.println("Failure : " + e.getMessage());
+            e.printStackTrace(System.err);
+        }
+    }
+
+    private static boolean rtspPortIsAvailable(String hostname) {
+        try (var socket = new Socket()) {
+            socket.setReuseAddress(true);
+            SocketAddress sa = new InetSocketAddress(hostname, 554);
+            socket.connect(sa, 1000);
+            return socket.isConnected();
+        } catch (IOException e) {
+            return false;
         }
     }
 
     private static void printHelp() {
-        System.out.println("Usage: docker run --rm ezviz-enable-rtsp --host=hostname [--port=8000] --username=admin --password=foobar");
+        System.out.println("Usage: docker run --rm ezviz-enable-rtsp --host=hostname [--port=8000] --username=admin --password=foobar [--interval=sec]");
+        System.out.println("If `--interval` is defined, then the program won't exit ; at defined interval it will check if port 554 is available and if not, will try to enable rtsp");
     }
 }

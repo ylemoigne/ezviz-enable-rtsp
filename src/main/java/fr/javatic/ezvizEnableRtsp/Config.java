@@ -2,7 +2,7 @@ package fr.javatic.ezvizEnableRtsp;
 
 import java.util.Arrays;
 
-record Config(String host, short port, String username, String password) {
+record Config(String host, short port, String username, String password, Integer intervalInSeconds) {
     public static Config parse(String[] args){
         var host = Arrays.stream(args).filter(it -> it.startsWith("--host=")).findFirst()
                 .map(it->it.substring(it.indexOf('=')+1))
@@ -27,6 +27,19 @@ record Config(String host, short port, String username, String password) {
                 .map(it->it.substring(it.indexOf('=')+1))
                 .orElseThrow(()->new InvalidCommandLineException("Missing required argument : --password"));
 
-        return new Config(host, port, username, password);
+        var intervalAsString = Arrays.stream(args).filter(it -> it.startsWith("--interval=")).findFirst()
+                .map(it->it.substring(it.indexOf('=')+1))
+                .orElse(null);
+
+        Integer intervalInSeconds = null;
+        if(intervalAsString != null) {
+            try {
+                intervalInSeconds = Integer.parseInt(portAsString);
+            } catch (NumberFormatException e) {
+                throw new InvalidCommandLineException(String.format("Failed to convert interval value '%s' to number", intervalAsString));
+            }
+        }
+
+        return new Config(host, port, username, password, intervalInSeconds);
     }
 }
