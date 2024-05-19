@@ -34,7 +34,7 @@ record Config(String host, short port, String username, String password, Integer
         Integer intervalInSeconds = null;
         if(intervalAsString != null) {
             try {
-                intervalInSeconds = Integer.parseInt(portAsString);
+                intervalInSeconds = Integer.parseInt(intervalAsString);
             } catch (NumberFormatException e) {
                 throw new InvalidCommandLineException(String.format("Failed to convert interval value '%s' to number", intervalAsString));
             }

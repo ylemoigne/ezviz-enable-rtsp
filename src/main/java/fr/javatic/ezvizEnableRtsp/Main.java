@@ -29,11 +29,13 @@ public class Main {
                 enableRtsp(hikvision, config);
                 executorService.close();
             }else{
-                executorService.schedule(()->{
-                    if (!rtspPortIsAvailable(config.host())) {
-                        enableRtsp(hikvision, config);
-                    }
-                }, config.intervalInSeconds(), TimeUnit.SECONDS);
+                System.out.println("Launch scheduled check (" + config.intervalInSeconds() + " seconds)");
+                executorService.scheduleWithFixedDelay(
+                        ()-> enableRtspIfPortIsUnavailable(config, hikvision),
+                        0,
+                        config.intervalInSeconds(),
+                        TimeUnit.SECONDS
+                );
                 Thread.currentThread().join();
             }
         } catch (Exception e) {
@@ -43,8 +45,17 @@ public class Main {
         }
     }
 
+    private static void enableRtspIfPortIsUnavailable(Config config, Hikvision hikvision) {
+        if (rtspPortIsAvailable(config.host())) {
+            //System.out.println("RTSP port is available");
+        }else{
+            enableRtsp(hikvision, config);
+        }
+    }
+
     private static void enableRtsp(Hikvision hikvision, Config config) {
         try {
+            System.out.println("Enable RTSP");
             hikvision.login(config.host(), config.port(), config.username(), config.password());
             System.out.println(hikvision.setServiceSwitch(new ServiceSwitchConfig(1, 1, 1, 1)));
         } catch (HikvisionCallFailure e) {
