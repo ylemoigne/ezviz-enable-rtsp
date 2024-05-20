@@ -3,14 +3,19 @@ package fr.javatic.ezvizEnableRtsp;
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.Hikvision;
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.HikvisionCallFailure;
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.ServiceSwitchConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class.getSimpleName());
     private static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
     public static void main(String[] args) {
@@ -25,13 +30,13 @@ public class Main {
         }
 
         try (var hikvision = new Hikvision()) {
-            if(config.intervalInSeconds()==null){
+            if (config.intervalInSeconds() == null) {
                 enableRtsp(hikvision, config);
                 executorService.close();
-            }else{
-                System.out.println("Launch scheduled check (" + config.intervalInSeconds() + " seconds)");
+            } else {
+                LOGGER.info("Launch scheduled check (" + config.intervalInSeconds() + " seconds)");
                 executorService.scheduleWithFixedDelay(
-                        ()-> enableRtspIfPortIsUnavailable(config, hikvision),
+                        () -> enableRtspIfPortIsUnavailable(config, hikvision),
                         0,
                         config.intervalInSeconds(),
                         TimeUnit.SECONDS
@@ -39,28 +44,29 @@ public class Main {
                 Thread.currentThread().join();
             }
         } catch (Exception e) {
-            System.out.println("Unexpected failure, exit");
-            e.printStackTrace(System.err);
+            LOGGER.error("Unexpected failure, exit", e);
             System.exit(1);
         }
     }
 
     private static void enableRtspIfPortIsUnavailable(Config config, Hikvision hikvision) {
         if (rtspPortIsAvailable(config.host())) {
-            //System.out.println("RTSP port is available");
-        }else{
+            LOGGER.debug("RTSP port is available");
+        } else {
             enableRtsp(hikvision, config);
         }
     }
 
     private static void enableRtsp(Hikvision hikvision, Config config) {
         try {
-            System.out.println("Enable RTSP");
+            LOGGER.info("Enable RTSP");
             hikvision.login(config.host(), config.port(), config.username(), config.password());
-            System.out.println(hikvision.setServiceSwitch(new ServiceSwitchConfig(1, 1, 1, 1)));
+            var response = hikvision.setServiceSwitch(new ServiceSwitchConfig(1, 1, 1, 1));
+            LOGGER.info("Response: {}", response);
         } catch (HikvisionCallFailure e) {
-            System.err.println("Failure : " + e.getMessage());
-            e.printStackTrace(System.err);
+            LOGGER.error("Enabling RTSP Failure", e);
+        }finally {
+            hikvision.logout();
         }
     }
 

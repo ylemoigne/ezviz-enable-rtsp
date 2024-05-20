@@ -11,8 +11,10 @@ repositories {
 }
 
 dependencies {
+    implementation("org.slf4j:slf4j-api:2.0.13")
     implementation("net.java.dev.jna:jna:5.14.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+    runtimeOnly("ch.qos.logback:logback-classic:1.5.6")
 }
 
 jib {

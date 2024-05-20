@@ -3,33 +3,35 @@ package fr.javatic.ezvizEnableRtsp.hikvisionSdk;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jna.NativeLong;
-import fr.javatic.ezvizEnableRtsp.Main;
 import fr.javatic.ezvizEnableRtsp.hikvisionSdk.bindings.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class Hikvision implements AutoCloseable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Hikvision.class.getSimpleName());
     private static final HCNetSDKNative hCNetSDK = HCNetSDKNative.INSTANCE;
 
     private final ObjectMapper objectMapper;
     private NativeLong currentUser = null;
 
     public Hikvision() {
-        System.out.println("[Hikvision] Initialize SDK");
+        LOGGER.info("Initialize SDK");
         objectMapper = new ObjectMapper();
 
         hCNetSDK.NET_DVR_Init();
         //hCNetSDK.NET_DVR_SetLogToFile(true, null, false);
         if (!hCNetSDK.NET_DVR_SetConnectTime(5000, 4)) {
-            System.err.println("Call to NET_DVR_SetConnectTime failed");
+            LOGGER.error("Call to NET_DVR_SetConnectTime failed");
         }
         hCNetSDK.NET_DVR_SetReconnect(10000, true);
     }
 
     public void login(String cameraHost, short cameraPort, String username, String password) {
-        System.out.println("[Hikvision] Perform Login");
-        if(currentUser!=null){
+        LOGGER.info("Perform Login");
+        if (currentUser != null) {
             throw new IllegalStateException("User is already logged in");
         }
 
@@ -50,8 +52,8 @@ public class Hikvision implements AutoCloseable {
         this.currentUser = userId;
     }
 
-    public NetDvrXmlConfigOutput setServiceSwitch(ServiceSwitchConfig config){
-        System.out.println("[Hikvision] Set service switch "+config);
+    public NetDvrXmlConfigOutput setServiceSwitch(ServiceSwitchConfig config) {
+        LOGGER.info("Set service switch " + config);
         String body;
         try {
             body = objectMapper.writeValueAsString(new ServiceSwitchCommand(config));
@@ -78,7 +80,7 @@ public class Hikvision implements AutoCloseable {
         xmlConfigOutput.dwStatusSize = 16384;
         xmlConfigOutput.write();
 
-        if(!hCNetSDK.NET_DVR_STDXMLConfig(this.currentUser, xmlConfigInput, xmlConfigOutput)){
+        if (!hCNetSDK.NET_DVR_STDXMLConfig(this.currentUser, xmlConfigInput, xmlConfigOutput)) {
             throw new HikvisionCallFailure("Set Service Switch failed : " + hCNetSDK.NET_DVR_GetLastError());
         }
 
@@ -92,15 +94,15 @@ public class Hikvision implements AutoCloseable {
             throw new RuntimeException(e);
         }
 
-        if(output.statusCode()!=1){
+        if (output.statusCode() != 1) {
             throw new HikvisionCallFailure("Set Service Switch failed : " + output);
         }
 
         return output;
     }
 
-    public void logout(){
-        System.out.println("[Hikvision] Logout");
+    public void logout() {
+        LOGGER.info("Logout");
 //        if(!hCNetSDK.NET_DVR_Logout(this.currentUser)){
 //            throw new HikvisionCallFailure("Logout failed : " + hCNetSDK.NET_DVR_GetLastError());
 //        }
@@ -109,8 +111,8 @@ public class Hikvision implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        System.out.println("[Hikvision] Closing SDK");
-        if(currentUser!=null){
+        LOGGER.info("Closing SDK");
+        if (currentUser != null) {
             logout();
         }
 //        hCNetSDK.NET_DVR_Cleanup();
